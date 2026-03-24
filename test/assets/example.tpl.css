@@ -1,0 +1,24 @@
+[% if $context?production %]
+/* production mode */
+[% else %]
+[% if $theme?colors?palette %]
+@import url("palette-[[ $theme?colors?palette ]].css");
+[% else %]
+@import url("palette-neutral.css");
+[% endif %]
+@import url("jinks-variables.css");
+@import url("base.css");
+[% endif %]
+
+:root {
+    --jinks-logo-light: url("[[ $theme?logo?image ]]");
+    --jinks-logo-image-width: [[ $theme?logo?width ]];
+    --jinks-base-font-family: [[ $theme?fonts?base?family ]];
+    --jinks-base-font-size: [[ $theme?fonts?base?size ]];
+
+    [% if $theme?texture?background-image %]
+    --jinks-texture-background: url("[[ $theme?texture?background-image ]]");
+    [% else %]
+    --jinks-texture-background: none;
+    [% endif %]
+}

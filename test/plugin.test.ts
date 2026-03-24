@@ -1,3 +1,69 @@
-describe("Prettier plugin for jinks templating", () => {
-	it("can format files", () => {});
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import * as prettier from "prettier";
+import plugin from "../src/main.ts";
+
+import xqueryPlugin from "prettier-plugin-xquery";
+
+function asset(name: string): string {
+	return readFileSync(join(import.meta.dirname, "assets", name), "utf8");
+}
+
+const snapshotFile = (test: string): string =>
+	join(import.meta.dirname, "assets", "snapshots", test);
+
+async function format(text: string, filepath: string): Promise<string> {
+	return prettier.format(text, {
+		parser: "jinks-templating",
+		plugins: [plugin, xqueryPlugin],
+		filepath,
+	});
+}
+
+describe("Prettier plugin roundtrip", () => {
+	it("HTML template is idempotent", async (t) => {
+		const input = asset("example.tpl.html");
+		const pass1 = await format(input, "example.tpl.html");
+		const pass2 = await format(pass1, "example.tpl.html");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("example.tpl.html"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
+	it("XQL template is idempotent", async (t) => {
+		const input = asset("example.tpl.xql");
+		const pass1 = await format(input, "example.tpl.xql");
+		const pass2 = await format(pass1, "example.tpl.xql");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("example.tpl.xql"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
+	it("Complex XQL template is idempotent", async (t) => {
+		const input = asset("api.tpl.xql");
+		const pass1 = await format(input, "api.tpl.xql");
+		const pass2 = await format(pass1, "api.tpl.xql");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("api.tpl.xql"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
+	it("CSS template is idempotent", async (t) => {
+		const input = asset("example.tpl.css");
+		const pass1 = await format(input, "example.tpl.css");
+		const pass2 = await format(pass1, "example.tpl.css");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("example.tpl.css"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
 });

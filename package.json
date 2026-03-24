@@ -1,6 +1,36 @@
 {
+	"name": "prettier-plugin-jinks",
+	"version": "1.0.0",
+	"description": "Prettier plugin for Jinks Templating files",
+	"module": "dist/main.js",
+	"main": "dist/main.js",
+	  "repository": {
+    "type": "git",
+    "url": "https://github.com/drrataplan/prettier-plugin-jinks.git"
+  },
 
-  "dependencies": {
-    "prettier": "^3.8.1"
-  }
+	"dependencies": {
+		"prettier": "^3.8.1",
+		"prettier-plugin-xquery": "^1.6.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.5.0",
+		"typescript": "^6.0.2",
+	  	"@commitlint/cli": "^20.1.0",
+		"@commitlint/config-conventional": "^20.0.0",
+		"@types/node": "^25.5.0"
+	},
+	"scripts": {
+		"test": "node --test",
+		"build": "tsc",
+		"lint": "prettier --write ./**/*.ts",
+		"lint-ci": "prettier --check ./**/*.ts"
+	},
+	"files": [
+		"dist"
+	],
+	"types": "./dist/main.d.ts",
+	"author": "Martin Middel",
+	"license": "MIT",
+	"type": "module"
 }
