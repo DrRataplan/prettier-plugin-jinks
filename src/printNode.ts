@@ -100,7 +100,6 @@ export default function printNode(
 					parts.push(hardline, `[% elif ${alt.expr} %]`);
 					parts.push(
 						indent([
-							hardline,
 							join(
 								"",
 								alt.body.map((n) => printNode(n, options)),
@@ -112,7 +111,6 @@ export default function printNode(
 					parts.push(hardline, "[% else %]");
 					parts.push(
 						indent([
-							hardline,
 							join(
 								"",
 								alt.body.map((n) => printNode(n, options)),

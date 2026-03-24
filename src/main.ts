@@ -69,6 +69,11 @@ const LANG_MAP: Record<string, LangConfig> = {
 		wrap: (id) => `/*${id}*/`,
 		re: /\/\*\s*(JINKS_\d+)\s*\*\//g,
 	},
+	js: {
+		parser: "js",
+		wrap: (id) => `/*${id}*/`,
+		re: /\/\*\s*(JINKS_\d+)\s*\*\//g,
+	},
 };
 
 function hostLang(filepath: string): LangConfig | undefined {

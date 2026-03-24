@@ -56,6 +56,17 @@ describe("Prettier plugin roundtrip", () => {
 		assert.equal(pass2, pass1);
 	});
 
+	it("Complex JS template is idempotent", async (t) => {
+		const input = asset("search.tps.js");
+		const pass1 = await format(input, "search.tps.js");
+		const pass2 = await format(pass1, "search.tps.js");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("search.tps.js"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
 	it("CSS template is idempotent", async (t) => {
 		const input = asset("example.tpl.css");
 		const pass1 = await format(input, "example.tpl.css");
