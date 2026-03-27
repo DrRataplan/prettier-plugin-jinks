@@ -115,7 +115,6 @@ export default function printNode(
 								"",
 								alt.body.map((n) => printNode(n, options)),
 							),
-							hardline,
 						]),
 					);
 				}
@@ -126,18 +125,26 @@ export default function printNode(
 
 		case TokenTypes.BLOCK: {
 			const order = node.order ? ` ${node.order}` : "";
-			return [
-				`[% block ${node.name}${order} %]`,
-				indent([
+			let body: Doc;
+			if (
+				node.body.length === 0 ||
+				(node.body.length === 1 &&
+					node.body[0]?.type === TokenTypes.TEXT &&
+					node.body[0].value.trim() === "")
+			) {
+				body = "";
+			} else {
+				body = [
+					indent([
+						join(
+							"",
+							node.body.map((n) => printNode(n, options)),
+						),
+					]),
 					hardline,
-					join(
-						"",
-						node.body.map((n) => printNode(n, options)),
-					),
-				]),
-				hardline,
-				"[% endblock %]",
-			];
+				];
+			}
+			return [`[% block ${node.name}${order} %]`, body, "[% endblock %]"];
 		}
 
 		case TokenTypes.TEMPLATE: {
@@ -145,7 +152,6 @@ export default function printNode(
 			return [
 				`[% template ${node.name}${order} %]`,
 				indent([
-					hardline,
 					join(
 						"",
 						node.body.map((n) => printNode(n, options)),
@@ -161,7 +167,6 @@ export default function printNode(
 			return [
 				`[% template! ${node.name}${order} %]`,
 				indent([
-					hardline,
 					join(
 						"",
 						node.body.map((n) => printNode(n, options)),

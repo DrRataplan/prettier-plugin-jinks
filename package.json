@@ -21,7 +21,7 @@
 		"@types/node": "^25.5.0"
 	},
 	"scripts": {
-		"test": "node --test",
+		"test": "node --test **/*.test.ts",
 		"build": "tsc",
 		"lint": "prettier --write ./**/*.ts",
 		"lint-ci": "prettier --check ./**/*.ts"

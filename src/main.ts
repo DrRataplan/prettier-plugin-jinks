@@ -77,8 +77,13 @@ const LANG_MAP: Record<string, LangConfig> = {
 };
 
 function hostLang(filepath: string): LangConfig | undefined {
-	// "foo.tpl.html" → "html",  "foo.tpl" → ""
-	const ext = filepath.replace(/^.*\.tpl\.?/, "");
+	// "foo.tpl.html" → "html"
+	const tplExt = filepath.replace(/^.*\.tpl\.?/, "");
+	if (tplExt !== filepath) {
+		return LANG_MAP[tplExt];
+	}
+	// Plain extension fallback: "foo.html" → "html"
+	const ext = filepath.split(".").pop() ?? "";
 	return LANG_MAP[ext];
 }
 

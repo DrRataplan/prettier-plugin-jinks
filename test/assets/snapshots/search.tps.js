@@ -7,7 +7,6 @@ const facetNames =[[ serialize($static?facets, map { "method": "json" }) ]];
 
 
 const facetNames = [];
-
 [% endif %]
 const indexedFields =[[ serialize($static?fields?index, map { "method": "json" }) ]];
 const storedFields =[[ serialize($static?fields?store, map { "method": "json" }) ]];

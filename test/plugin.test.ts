@@ -34,6 +34,28 @@ describe("Prettier plugin roundtrip", () => {
 		assert.equal(pass2, pass1);
 	});
 
+	it("HTML template with prolog is idempotent", async (t) => {
+		const input = asset("documentation.html");
+		const pass1 = await format(input, "documentation.html");
+		const pass2 = await format(pass1, "documentation.html");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("documentation.html"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
+	it("HTML template with article is idempotent", async (t) => {
+		const input = asset("base.html");
+		const pass1 = await format(input, "base.html");
+		const pass2 = await format(pass1, "base.html");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("base.html"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
 	it("XQL template is idempotent", async (t) => {
 		const input = asset("example.tpl.xql");
 		const pass1 = await format(input, "example.tpl.xql");
@@ -51,6 +73,17 @@ describe("Prettier plugin roundtrip", () => {
 		const pass2 = await format(pass1, "api.tpl.xql");
 
 		t.assert.fileSnapshot(pass1, snapshotFile("api.tpl.xql"), {
+			serializers: [(value: string) => value],
+		});
+		assert.equal(pass2, pass1);
+	});
+
+	it("Complex XQL template with groups is idempotent", async (t) => {
+		const input = asset("generated-config.tpl.xql");
+		const pass1 = await format(input, "generated-config.tpl.xql");
+		const pass2 = await format(pass1, "generated-config.tpl.xql");
+
+		t.assert.fileSnapshot(pass1, snapshotFile("generated-config.tpl.xql"), {
 			serializers: [(value: string) => value],
 		});
 		assert.equal(pass2, pass1);
