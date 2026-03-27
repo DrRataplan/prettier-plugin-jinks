@@ -4,10 +4,10 @@ import module namespace config = "http://www.tei-c.org/tei-simple/config" at "mo
 
 declare variable $exist:path external;
 
-declare variable $exist:root external;
-[# Use the first non-empty value from the defaults #]
-declare variable $landingPage :=
-  "[[ head(($context?defaults?landing, $context?defaults?browse, 'browse.html')) ]]";
+declare variable $exist:root external;[# Use the first non-empty value from the defaults #]
+declare variable $landingPage := "[[ head(
+  ($context?defaults?landing, $context?defaults?browse, "browse.html")
+) ]]";
 
 if ($exist:path eq "") then
   <dispatch xmlns="http://exist.sourceforge.net/NS/exist">
@@ -25,11 +25,11 @@ else if ($exist:path eq "/[[ $module?prefix ]]/api.html") then
   </dispatch>
 [% endfor %]
 else
-  [% if $context?dba %]
+[% if $context?dba %]
   let $main := "api-dba.xql"
-  [% else %]
+[% else %]
   let $main := "api.xql"
-  [% endif %]
+[% endif %]
   return <dispatch xmlns="http://exist.sourceforge.net/NS/exist">
     <forward url="{ $exist:controller }/modules/{ $main }" />
   </dispatch>

@@ -1,20 +1,20 @@
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>[[ $title ]]</title>
-  </head>
-  <body>
-    [% for $module in $context?api?*[?spec] %]
-    <div id="[[ $module?prefix ]]">
-      [% if $module?enabled %]
-      <h2>[[ $module?name ]]</h2>
-      [% elif $module?partial %]
-      <h2>[[ $module?name ]] (partial)</h2>
-      [% else %]
-      <h2>Disabled</h2>
-      [% endif %]
-    </div>
-    [% endfor %]
-    [# trailing comment #]
-  </body>
+    <head>
+        <meta charset="utf-8"/>
+        <title>[[ $title ]]</title>
+    </head>
+    <body>
+[% for $module in $context?api?*[?spec] %]
+        <div id="[[ $module?prefix ]]">
+  [% if $module?enabled %]
+            <h2>[[ $module?name ]]</h2>
+  [% elif $module?partial %]
+            <h2>[[ $module?name ]] (partial)</h2>
+
+  [% else %]
+            <h2>Disabled</h2>
+  [% endif %]
+        </div>
+[% endfor %][# trailing comment #]
+    </body>
 </html>

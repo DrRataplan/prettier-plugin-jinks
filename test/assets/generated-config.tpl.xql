@@ -120,7 +120,7 @@ declare function config:collection-config($collection as xs:string?, $docUri as 
 [% if exists($context?collection-config) %]
     switch ($collection)
     [% for $relativeCollectionPath in map:keys($context?collection-config) %]
-        case "[[ $relativeCollectionPath ]]" return[[ serialize($context?collection-config($relativeCollectionPath), map { "method": "adaptive" }) ]]
+        case "[[ $relativeCollectionPath ]]" return [[ serialize($context?collection-config($relativeCollectionPath), map { "method": "adaptive" }) ]]
     [% endfor %]
         default return
             ()

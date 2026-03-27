@@ -1,7 +1,7 @@
 import assert from "assert/strict";
 import { it, describe } from "node:test";
 import tokenize from "../src/tokenize.ts";
-import { TokenTypes } from "../dist/Token.js";
+import { TokenTypes } from "../src/Token.ts";
 
 describe("Tokenize", () => {
 	it("plain text produces a single TEXT token", () => {
@@ -15,7 +15,8 @@ describe("Tokenize", () => {
 		const tokens = tokenize("Hello [[ $name ]]!");
 		assert.equal(tokens.length, 3);
 		assert.equal(tokens[1].type, "VALUE");
-		assert.equal(tokens[1].expr, "$name");
+		assert.equal(tokens[1].expr.type, "XQEXPR");
+		assert.equal(tokens[1].expr.value, "$name");
 	});
 
 	it("comment is stripped from output tokens", () => {
@@ -30,7 +31,8 @@ describe("Tokenize", () => {
 		const tokens = tokenize("[% for $doc in $documents %]x[% endfor %]");
 		assert.equal(tokens[0].type, "FOR");
 		assert.equal(tokens[0].var, "$doc");
-		assert.equal(tokens[0].expr, "$documents");
+		assert.equal(tokens[0].expr.type, "XQEXPR");
+		assert.equal(tokens[0].expr.value, "$documents");
 		assert.equal(tokens[2].type, "ENDFOR");
 	});
 
@@ -38,7 +40,8 @@ describe("Tokenize", () => {
 		const tokens = tokenize("[% let $x = foo:bar($y) %]x[% endlet %]");
 		assert.equal(tokens[0].type, "LET");
 		assert.equal(tokens[0].var, "$x");
-		assert.equal(tokens[0].expr, "foo:bar($y)");
+		assert.equal(tokens[0].expr.type, "XQEXPR");
+		assert.equal(tokens[0].expr.value, "foo:bar($y)");
 		assert.equal(tokens[2].type, "ENDLET");
 	});
 
@@ -47,9 +50,11 @@ describe("Tokenize", () => {
 			"[% if $a %]a[% elif $b %]b[% else %]c[% endif %]",
 		);
 		assert.equal(tokens[0].type, "IF");
-		assert.equal(tokens[0].expr, "$a");
+		assert.equal(tokens[0].expr.type, "XQEXPR");
+		assert.equal(tokens[0].expr.value, "$a");
 		assert.equal(tokens[2].type, "ELIF");
-		assert.equal(tokens[2].expr, "$b");
+		assert.equal(tokens[2].expr.type, "XQEXPR");
+		assert.equal(tokens[2].expr.value, "$b");
 		assert.equal(tokens[3].type, "TEXT");
 		assert.equal(tokens[3].value, "b");
 		assert.equal(tokens[4].type, "ELSE");
@@ -118,8 +123,10 @@ describe("Tokenize", () => {
 		const values = tokens.filter((t) => t.type === "VALUE");
 		assert.equal(values.length, 2);
 		assert.equal(values[0].type, TokenTypes.VALUE);
-		assert.equal(values[0].expr, "$a");
+		assert.equal(values[0].expr.type, "XQEXPR");
+		assert.equal(values[0].expr.value, "$a");
 		assert.equal(values[1].type, TokenTypes.VALUE);
-		assert.equal(values[1].expr, "$b");
+		assert.equal(values[1].expr.type, "XQEXPR");
+		assert.equal(values[1].expr.value, "$b");
 	});
 });

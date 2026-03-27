@@ -22,6 +22,7 @@ export const TokenTypes = {
 	RAW: "RAW",
 	FRONTMATTER: "FRONTMATTER",
 	COMMENT: "COMMENT",
+	XQEXPR: "XQEXPR", // embedded XQuery expression
 } as const;
 
 export namespace TokenType {
@@ -45,7 +46,8 @@ export namespace TokenType {
 		| IMPORT
 		| RAW
 		| FRONTMATTER
-		| COMMENT;
+		| COMMENT
+		| XQEXPR;
 
 	export type TEXT = "TEXT";
 	export type VALUE = "VALUE";
@@ -67,4 +69,5 @@ export namespace TokenType {
 	export type RAW = "RAW";
 	export type FRONTMATTER = "FRONTMATTER";
 	export type COMMENT = "COMMENT";
+	export type XQEXPR = "XQEXPR";
 }

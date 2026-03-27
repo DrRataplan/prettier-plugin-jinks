@@ -25,7 +25,10 @@ describe("parser", () => {
 		const forNode = ast.body[0];
 		assertType(forNode.type, TokenTypes.FOR);
 		assert.equal(forNode.var, "$x");
-		assert.equal(forNode.expr, "$items");
+		assert.deepEqual(forNode.expr, {
+			type: TokenTypes.XQEXPR,
+			value: "$items",
+		});
 		assert.equal(forNode.body.length, 3); // text, value, text
 		assert.equal(forNode.body[1].type, TokenTypes.VALUE);
 	});
@@ -62,9 +65,15 @@ describe("parser", () => {
 		assertType(ifNode.type, TokenTypes.IF);
 		assert.equal(ifNode.alternates.length, 2);
 		assertType(ifNode.alternates[0].type, TokenTypes.ELIF);
-		assert.equal(ifNode.alternates[0].expr, "$b");
+		assert.deepEqual(ifNode.alternates[0].expr, {
+			type: TokenTypes.XQEXPR,
+			value: "$b",
+		});
 		assertType(ifNode.alternates[1].type, TokenTypes.ELIF);
-		assert.equal(ifNode.alternates[1].expr, "$c");
+		assert.deepEqual(ifNode.alternates[1].expr, {
+			type: TokenTypes.XQEXPR,
+			value: "$c",
+		});
 	});
 
 	it("nested for inside if", () => {

@@ -6,10 +6,12 @@ type Pattern = {
 	re: RegExp;
 	type: TokenType.TokenType;
 };
+// These patters are the same as used in jinks-templating/content/templates.xqm.
 const PATTERNS: Pattern[] = [
-	// frontmatter
+	// frontmatter.
+	// Note the regex is different from the one in jinks-templating because we are interested in the part _before_ the --json
 	{
-		re: /^(?:\s*<[^>]+>)?\s*---(?:json|)\s*\n([\s\S]*?)\n\s*---/m,
+		re: /\s*---(?:json|)\s*\n*([\s\S]*?)\n*\s*---/m,
 		type: TokenTypes.FRONTMATTER,
 	},
 	// comment
@@ -85,9 +87,10 @@ type SimpleToken = {
 };
 type IncludeToken = { type: TokenType.INCLUDE; target: string };
 type ElseToken = { type: TokenType.ELSE };
-type IfToken = { type: TokenType.IF | TokenType.ELIF; expr: string };
-type LetToken = { type: TokenType.LET; var: string; expr: string };
-type ForToken = { type: TokenType.FOR; var: string; expr: string };
+type XQExprValue = { type: TokenType.XQEXPR; value: string };
+type IfToken = { type: TokenType.IF | TokenType.ELIF; expr: XQExprValue };
+type LetToken = { type: TokenType.LET; var: string; expr: XQExprValue };
+type ForToken = { type: TokenType.FOR; var: string; expr: XQExprValue };
 type ImportToken = {
 	type: TokenType.IMPORT;
 	uri: string;
@@ -99,7 +102,7 @@ type TemplateToken = {
 	name: string;
 	order: string;
 };
-type ValueToken = { type: TokenType.VALUE; expr: string };
+type ValueToken = { type: TokenType.VALUE; expr: XQExprValue };
 export type Token =
 	| SimpleToken
 	| ImportToken
@@ -171,14 +174,14 @@ export default function tokenize(input: string): Token[] {
 				tokens.push({
 					type: TokenTypes.FOR,
 					var: m[1]!.trim(),
-					expr: m[2]!.trim(),
+					expr: { type: TokenTypes.XQEXPR, value: m[2]!.trim() },
 				});
 				break;
 			case TokenTypes.LET:
 				tokens.push({
 					type: TokenTypes.LET,
 					var: m[1]!.trim(),
-					expr: m[2]!.trim(),
+					expr: { type: TokenTypes.XQEXPR, value: m[2]!.trim() },
 				});
 				break;
 			case TokenTypes.INCLUDE:
@@ -202,16 +205,25 @@ export default function tokenize(input: string): Token[] {
 				});
 				break;
 			case "IF":
-				tokens.push({ type: TokenTypes.IF, expr: m[1]!.trim() });
+				tokens.push({
+					type: TokenTypes.IF,
+					expr: { type: TokenTypes.XQEXPR, value: m[1]!.trim() },
+				});
 				break;
 			case "ELIF":
-				tokens.push({ type: TokenTypes.ELIF, expr: m[1]!.trim() });
+				tokens.push({
+					type: TokenTypes.ELIF,
+					expr: { type: TokenTypes.XQEXPR, value: m[1]!.trim() },
+				});
 				break;
 			case TokenTypes.ELSE:
 				tokens.push({ type: TokenTypes.ELSE });
 				break;
 			case TokenTypes.VALUE:
-				tokens.push({ type: TokenTypes.VALUE, expr: m[1]!.trim() });
+				tokens.push({
+					type: TokenTypes.VALUE,
+					expr: { type: TokenTypes.XQEXPR, value: m[1]!.trim() },
+				});
 				break;
 		}
 

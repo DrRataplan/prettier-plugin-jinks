@@ -2,8 +2,15 @@ import type { TokenType } from "./Token.ts";
 import { TokenTypes } from "./Token.ts";
 import type { Token } from "./tokenize.ts";
 
+export type XQExprNode = {
+	type: TokenType.XQEXPR;
+	value: string;
+};
+
 export type Node =
 	| BlockNode
+	| ElseNode
+	| ElifNode
 	| ForNode
 	| IfNode
 	| ImportNode
@@ -11,7 +18,8 @@ export type Node =
 	| LetNode
 	| SimpleNode
 	| TemplateNode
-	| ValueNode;
+	| ValueNode
+	| XQExprNode;
 
 type SimpleNode = {
 	type:
@@ -20,12 +28,22 @@ type SimpleNode = {
 		| TokenType.ENDTEMPLATE
 		| TokenType.ENDFOR
 		| TokenType.ENDIF
-		| TokenType.ELIF
 		| TokenType.ENDLET
 		| TokenType.FRONTMATTER
 		| TokenType.RAW
 		| TokenType.TEXT;
 	value: string;
+};
+
+type ElifNode = {
+	type: TokenType.ELIF;
+	expr: XQExprNode;
+	body: Node[];
+};
+
+type ElseNode = {
+	type: TokenType.ELSE;
+	body: Node[];
 };
 
 type ImportNode = {
@@ -42,7 +60,7 @@ export type RootNode = {
 
 type ValueNode = {
 	type: TokenType.VALUE;
-	expr: string;
+	expr: XQExprNode;
 };
 
 type IncludeNode = {
@@ -53,34 +71,25 @@ type IncludeNode = {
 type ForNode = {
 	type: TokenType.FOR;
 	var: string;
-	expr: string;
+	expr: XQExprNode;
 	body: Node[];
 };
 
 type LetNode = {
 	type: TokenType.LET;
 	var: string;
-	expr: string;
+	expr: XQExprNode;
 	body: Node[];
 };
 
 type IfNode = {
-	type: TokenType.IF | TokenType.ELIF;
-	expr: string;
+	type: TokenType.IF;
+	expr: XQExprNode;
 	consequent: Node[];
 	alternates: Alternate[];
 };
 
-type Alternate =
-	| {
-			type: TokenType.ELIF;
-			expr: string;
-			body: Node[];
-	  }
-	| {
-			type: TokenType.ELSE;
-			body: Node[];
-	  };
+type Alternate = ElifNode | ElseNode;
 
 type BlockNode = {
 	type: TokenType.BLOCK;

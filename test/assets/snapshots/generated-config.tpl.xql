@@ -13,11 +13,17 @@ declare variable $config:fore := "[[ $script?fore ]]";
 
 declare variable $config:default-view := "[[ $defaults?view ]]";
 declare variable $config:default-template := "[[ $defaults?template ]]";
-declare variable $config:default-media := ([[ string-join($defaults?media?* ! ('"' || . || '"'), ", ") ]]);
+declare variable $config:default-media := ([[ string-join(
+  $defaults?media?*!('"' || . || '"'),
+  ", "
+) ]]);
 declare variable $config:search-default := "[[ $indexing?tei?search ]]";
 declare variable $config:sort-default := "[[ $features?browse?sort?default ]]";
 [% if map:contains($defaults, "data") %]
-  [% if starts-with($defaults?data, "/") %]
+  [% if starts-with(
+    $defaults?data,
+    "/"
+  ) %]
     declare variable $config:data-root := "[[ $defaults?data ]]";
   [% else %]
     declare variable $config:data-root := $config:app-root || "/[[ $defaults?data ]]";
@@ -26,7 +32,10 @@ declare variable $config:sort-default := "[[ $features?browse?sort?default ]]";
     declare variable $config:data-root := $config:app-root || "/data";
 [% endif %]
 [% if $defaults?data-default %]
-  [% if starts-with($defaults?data-default, "/") %]
+  [% if starts-with(
+    $defaults?data-default,
+    "/"
+  ) %]
     declare variable $config:data-default := "[[ $defaults?data-default ]]";
   [% else %]
     declare variable $config:data-default := $config:data-root || "/[[ $defaults?data-default ]]";
@@ -35,7 +44,10 @@ declare variable $config:sort-default := "[[ $features?browse?sort?default ]]";
     declare variable $config:data-default := $config:data-root;
 [% endif %]
 [% if map:contains($defaults, "register-root") %]
-  [% if starts-with($defaults?register-root, "/") %]
+  [% if starts-with(
+    $defaults?register-root,
+    "/"
+  ) %]
     declare variable $config:register-root := "[[ $defaults?register-root ]]";
   [% else %]
     declare variable $config:register-root := $config:data-root || "/[[ $defaults?register-root ]]";
@@ -44,19 +56,32 @@ declare variable $config:sort-default := "[[ $features?browse?sort?default ]]";
     declare variable $config:register-root := $config:data-root || "/registers";
 [% endif %]
 
-declare variable $config:data-exclude := ([[ string-join($defaults?data-exclude?*, ",&#10;    ") ]]
+declare variable $config:data-exclude := ([[ string-join(
+  $defaults?data-exclude?*,
+  ",&#10;    "
+) ]]
 );
 
 declare variable $config:odd-root := $config:app-root || "/[[ $defaults?odd-root ]]";
 declare variable $config:default-odd := "[[ $defaults?odd ]]";
 declare variable $config:odd-internal :=
-    ([[ string-join($defaults?odd-internal?* ! ('"' || . || '"'), ", ") ]] );
+    ([[ string-join(
+  $defaults?odd-internal?*!('"' || . || '"'),
+  ", "
+) ]] );
 
-declare variable $config:odd-available :=[% block config-odd-available %]
-([[ string-join($odds?*[not(. = $defaults?odd-internal?*)] ! ('"' || . || '"'), ", ") ]] )
+declare variable $config:odd-available :=
+[% block config-odd-available %]
+([[ string-join(
+    $odds?*[not(. = $defaults?odd-internal?*)]!('"' || . || '"'),
+    ", "
+  ) ]] )
 [% endblock %];
 
-declare variable $config:odd-media := ([[ string-join($defaults?media?* ! ('"' || . || '"'), ", ") ]]);
+declare variable $config:odd-media := ([[ string-join(
+  $defaults?media?*!('"' || . || '"'),
+  ", "
+) ]]);
 
 (:
     Determine the application root collection from the current module load path.
@@ -88,7 +113,10 @@ declare variable $config:address-by-id as xs:boolean :=
 declare variable $config:default-language as xs:string := "[[ $context?defaults?language ]]";
 
 declare variable $config:context-path :=
-[% if map:contains($defaults, "context-path") %]
+[% if map:contains(
+  $defaults,
+  "context-path"
+) %]
     "[[ $defaults?context-path ]]"
 [% else %]
     let $prop := util:system-property("teipublisher.context-path")
@@ -111,8 +139,13 @@ declare variable $config:context-path :=
 declare function config:collection-config($collection as xs:string?, $docUri as xs:string?) {
 [% if exists($context?collection-config) %]
     switch ($collection)
-  [% for $relativeCollectionPath in map:keys($context?collection-config) %]
-        case "[[ $relativeCollectionPath ]]" return[[ serialize($context?collection-config($relativeCollectionPath), map { "method": "adaptive" }) ]]
+  [% for $relativeCollectionPath in map:keys(
+    $context?collection-config
+  ) %]
+        case "[[ $relativeCollectionPath ]]" return[[ serialize(
+      $context?collection-config($relativeCollectionPath),
+      map {"method": "adaptive"}
+    ) ]]
   [% endfor %]
         default return
             ()

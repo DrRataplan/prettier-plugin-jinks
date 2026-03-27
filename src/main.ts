@@ -1,7 +1,7 @@
-import type { AstPath, Doc, Options, Printer } from "prettier";
+import type { AstPath, Options, Printer } from "prettier";
 import * as prettier from "prettier";
 import parse from "./parser.ts";
-import type { Node, RootNode } from "./parser.ts";
+import type { Node, RootNode, XQExprNode } from "./parser.ts";
 import { TokenTypes } from "./Token.ts";
 import tokenize from "./tokenize.ts";
 import printNode from "./printNode.ts";
@@ -42,37 +42,37 @@ const LANG_MAP: Record<string, LangConfig> = {
 	xq: {
 		parser: "xquery",
 		wrap: (id) => `(:${id}:)`,
-		re: /\(:\s*(JINKS_\d+)\s*:\)/g,
+		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)/g,
 	},
 	xql: {
 		parser: "xquery",
 		wrap: (id) => `(:${id}:)`,
-		re: /\(:\s*(JINKS_\d+)\s*:\)/g,
+		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)/g,
 	},
 	xqm: {
 		parser: "xquery",
 		wrap: (id) => `(:${id}:)`,
-		re: /\(:\s*(JINKS_\d+)\s*:\)/g,
+		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)/g,
 	},
 	html: {
 		parser: "html",
 		wrap: (id) => `<!--${id}-->`,
-		re: /<!--(JINKS_\d+)-->/g,
+		re: /<!--(JINKS_SPECIAL_\d+)-->/g,
 	},
 	css: {
 		parser: "css",
 		wrap: (id) => `/*${id}*/`,
-		re: /\/\*\s*(JINKS_\d+)\s*\*\//g,
+		re: /\/\*\s*(JINKS_SPECIAL_\d+)\s*\*\//g,
 	},
 	scss: {
 		parser: "scss",
 		wrap: (id) => `/*${id}*/`,
-		re: /\/\*\s*(JINKS_\d+)\s*\*\//g,
+		re: /\/\*\s*(JINKS_SPECIAL_\d+)\s*\*\//g,
 	},
 	js: {
 		parser: "js",
 		wrap: (id) => `/*${id}*/`,
-		re: /\/\*\s*(JINKS_\d+)\s*\*\//g,
+		re: /\/\*\s*(JINKS_SPECIAL_\d+)\s*\*\//g,
 	},
 };
 
@@ -88,155 +88,152 @@ function hostLang(filepath: string): LangConfig | undefined {
 }
 
 const printer: Printer = {
-	print(path: AstPath, options) {
-		return printNode(path.node, options);
+	print(path: AstPath, options, print) {
+		return printNode(path, options, print);
 	},
 
 	embed(path: AstPath, options: Options) {
-		// Embed only fires at the root — we reconstruct the full document and
-		// format it as a whole so the host parser sees complete, valid code.
-		if ((path.node as RootNode).type !== "root") return null;
-		const lang = hostLang(options.filepath ?? "");
-		if (!lang) return null;
+		const node = path.node as Node | RootNode;
 
-		return async (_textToDoc, _print, path, options) => {
-			const root = path.node as RootNode;
+		//  Root node with a host language.
 
-			// --- Phase 1: serialize AST → host-language source with placeholders ---
-			//
-			// Template structural tags (FOR, IF, LET, BLOCK, …) are replaced with
-			// comment-style placeholders so the host parser sees valid syntax.
-			// VALUE nodes ([[ expr ]]) stay in-place as literal text — they're
-			// valid inside HTML attributes and CSS custom property values.
+		// The tricky thing is that only the whole document is valid in the host
+		// language. It is common to use a for loop over switch cases. A lone
+		// case is invalid in XQuery
 
-			const tags: string[] = [];
-
-			function ph(tag: string): string {
-				const id = `JINKS_${tags.length}`;
-				tags.push(tag);
-				return lang!.wrap(id);
+		// Split up the file into TEXT (aka host language) and JINKS. Interleave
+		// the JINKS parts, do a host format and assign the TEXT parts into the
+		// jinks ast again
+		if (node.type === "root") {
+			const lang = hostLang(options.filepath ?? "");
+			if (!lang) {
+				// Unknown file type.
+				return null;
 			}
 
-			function ser(node: Node): string {
-				switch (node.type) {
-					case TokenTypes.TEXT:
-						return node.value;
-					case TokenTypes.VALUE:
-						return `[[ ${node.expr} ]]`;
-					case TokenTypes.COMMENT:
-						return ph(`[#${node.value}#]`);
-					case TokenTypes.RAW:
-						return ph(`[% raw %]${node.value}[% endraw %]`);
-					case TokenTypes.FRONTMATTER:
-						return ph(`---json\n${node.value.trim()}\n---`);
-					case TokenTypes.INCLUDE:
-						return ph(`[% include ${node.target} %]`);
-					case TokenTypes.IMPORT: {
-						const at = node.at ? ` at "${node.at}"` : "";
-						return ph(
-							`[% import "${node.uri}" as "${node.as}"${at} %]`,
-						);
-					}
-					case TokenTypes.FOR:
-						return (
-							ph(`[% for ${node.var} in ${node.expr} %]`) +
-							node.body.map(ser).join("") +
-							ph(`[% endfor %]`)
-						);
-					case TokenTypes.LET:
-						return (
-							ph(`[% let ${node.var} = ${node.expr} %]`) +
-							node.body.map(ser).join("") +
-							ph(`[% endlet %]`)
-						);
-					case TokenTypes.IF: {
-						let s =
-							ph(`[% if ${node.expr} %]`) +
-							node.consequent.map(ser).join("");
-						for (const alt of node.alternates) {
-							if (alt.type === TokenTypes.ELIF) {
-								s +=
-									ph(`[% elif ${alt.expr} %]`) +
-									alt.body.map(ser).join("");
-							} else {
-								s +=
-									ph(`[% else %]`) +
-									alt.body.map(ser).join("");
+			return async (_textToDoc, print, path, options) => {
+				const root = path.node as RootNode;
+
+				// Phase 1: build placeholder source from AST
+
+				// TEXT nodes are emitted verbatim; all Jinks tags become placeholders.
+				// Each TEXT node records `segIdx` (the count of placeholders emitted
+				// before it), which maps it to parts[segIdx * 2] after split.
+
+				const textEntries: Array<{
+					node: { value: string };
+					segIdx: number;
+				}> = [];
+				let counter = 0;
+
+				function ph(): string {
+					return lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+				}
+
+				function buildSource(nodes: Node[]): string {
+					let out = "";
+					for (const n of nodes) {
+						if (n.type === TokenTypes.TEXT) {
+							textEntries.push({ node: n, segIdx: counter });
+							out += n.value;
+						} else {
+							switch (n.type) {
+								case TokenTypes.VALUE:
+								case TokenTypes.COMMENT:
+								case TokenTypes.RAW:
+								case TokenTypes.FRONTMATTER:
+								case TokenTypes.INCLUDE:
+								case TokenTypes.IMPORT:
+									out += ph();
+									break;
+								case TokenTypes.FOR:
+									out += ph();
+									out += buildSource(n.body);
+									out += ph();
+									break;
+								case TokenTypes.LET:
+									out += ph();
+									out += buildSource(n.body);
+									out += ph();
+									break;
+								case TokenTypes.IF:
+									out += ph();
+									out += buildSource(n.consequent);
+									for (const alt of n.alternates) {
+										out += ph();
+										out += buildSource(alt.body);
+									}
+									out += ph();
+									break;
+								case TokenTypes.BLOCK:
+								case TokenTypes.TEMPLATE:
+								case TokenTypes.TEMPLATE_OVERRIDE:
+									out += ph();
+									out += buildSource(n.body);
+									out += ph();
+									break;
 							}
 						}
-						return s + ph(`[% endif %]`);
 					}
-					case TokenTypes.BLOCK: {
-						const order = node.order ? ` ${node.order}` : "";
-						return (
-							ph(`[% block ${node.name}${order} %]`) +
-							node.body.map(ser).join("") +
-							ph(`[% endblock %]`)
-						);
-					}
-					case TokenTypes.TEMPLATE: {
-						const order = node.order ? ` ${node.order}` : "";
-						return (
-							ph(`[% template ${node.name}${order} %]`) +
-							node.body.map(ser).join("") +
-							ph(`[% endtemplate %]`)
-						);
-					}
-					case TokenTypes.TEMPLATE_OVERRIDE: {
-						const order = node.order ? ` ${node.order}` : "";
-						return (
-							ph(`[% template! ${node.name}${order} %]`) +
-							node.body.map(ser).join("") +
-							ph(`[% endtemplate %]`)
-						);
-					}
-					default:
-						return "";
+					return out;
 				}
-			}
 
-			const reconstructed = root.body.map(ser).join("");
+				const source = buildSource(root.body);
 
-			// --- Phase 2: format with host parser ---
+				// Phase 2: format with host parser
 
-			const formatted = await prettier.format(reconstructed, {
-				...options,
-				parser: lang.parser,
-				// Exclude ourselves to avoid infinite recursion
-				plugins: ((options as any).plugins ?? []).filter(
-					(p: any) => p !== plugin,
-				),
-			});
+				const formatted = await prettier.format(source, {
+					...options,
+					parser: lang.parser,
+					plugins: ((options as any).plugins ?? []).filter(
+						(p: any) => p !== plugin,
+					),
+				});
 
-			// --- Phase 3: split at placeholders, weave template tags back in ---
-			//
-			// Some host formatters (e.g. XQuery) add blank lines around comments.
-			// Those blank lines bake into TEXT nodes and accumulate on each pass.
-			// We collapse them at the boundary of every placeholder insertion so
-			// the output is stable: one newline adjacent to each template tag,
-			// interior blank lines within host content are left untouched.
+				// Phase 3: assign formatted text segments back to TEXT nodes
 
-			const parts = formatted.split(lang.re);
-			// split() with a capturing group alternates: text, id, text, id, …
-			const out: string[] = [];
-			for (let i = 0; i < parts.length; i++) {
-				if (i % 2 === 0) {
-					let text = parts[i]!;
-					// After a placeholder: collapse leading blank lines to one \n
-					if (i > 0) text = text.replace(/^\n([ \t]*\n)+/, "\n");
-					// Before a placeholder: collapse trailing blank lines to one \n
-					if (i < parts.length - 1)
-						text = text.replace(/\n([ \t]*\n)+$/, "\n");
-					out.push(text);
-				} else {
-					// parts[i] is the captured id, e.g. "JINKS_3"
-					out.push(tags[parseInt(parts[i]!.slice(6))]!);
+				// split(re) with a capturing group gives [text, id, text, id, ..., text].
+				// The TEXT node with segIdx k owns parts[k * 2].
+				// Collapse extra blank lines that some host formatters insert around
+				// comment placeholders.
+
+				const parts = formatted.split(lang.re);
+				for (const { node: textNode, segIdx } of textEntries) {
+					let text = parts[segIdx * 2] ?? "";
+					if (segIdx > 0) {
+						text = text.replace(/^\n([ \t]*\n)+/, "\n");
+					}
+					textNode.value = text;
 				}
-			}
 
-			// Return the assembled string as a Doc (strings are valid Docs in prettier).
-			return out.join("") as Doc;
-		};
+				// Phase 4: print AST with updated TEXT values
+
+				// printNode handles Jinks tag formatting; XQEXPR embed handles XQ
+				// expression formatting (no separate pre-format phase needed).
+
+				const { join } = prettier.doc.builders;
+				return join("", path.map(print, "body"));
+			};
+		}
+
+		// XQEXPR node
+		// Fires when printNode traverses via path.call(print, "expr").
+		if (node.type === TokenTypes.XQEXPR) {
+			return async (textToDoc, _print, path, options) => {
+				const n = path.node as XQExprNode;
+				try {
+					return await textToDoc(n.value.trim(), {
+						...options,
+						parser: "xquery",
+					});
+				} catch (e) {
+					// Oops! XQuery error! rethrow.
+					throw e;
+				}
+			};
+		}
+
+		return null;
 	},
 };
 
@@ -258,9 +255,11 @@ const plugin: prettier.Plugin = {
 			},
 			astFormat: "jinks-templating",
 			locStart() {
+				// TODO
 				return 0;
 			},
 			locEnd() {
+				// TODO
 				return 0;
 			},
 		},

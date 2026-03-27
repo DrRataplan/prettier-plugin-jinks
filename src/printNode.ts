@@ -1,19 +1,25 @@
-import { type Options, doc, type Doc } from "prettier";
+import { type AstPath, type Options, doc, type Doc } from "prettier";
 import type { Node, RootNode } from "./parser.ts";
 import { TokenTypes } from "./Token.ts";
 
 const { hardline, indent, join } = doc.builders;
 
+type PrintFn = (path: AstPath) => Doc;
+
 export default function printNode(
-	node: Node | RootNode,
+	path: AstPath,
 	options: Options,
+	print: PrintFn,
 ): Doc {
+	const node = path.node as Node | RootNode;
+
 	switch (node.type) {
 		case "root":
-			return join(
-				"",
-				node.body.map((n) => printNode(n, options)),
-			);
+			return [join("", path.map(print, "body")), hardline];
+
+		case TokenTypes.XQEXPR:
+			// embed() handles XQuery formatting; this is the synchronous fallback
+			return node.value;
 
 		case TokenTypes.FRONTMATTER: {
 			let fm = node.value.trim();
@@ -21,29 +27,35 @@ export default function printNode(
 				fm = JSON.stringify(
 					JSON.parse(fm),
 					null,
-					options.useTabs ? "\t`" : options.tabWidth,
+					options.useTabs ? "\t" : options.tabWidth,
 				);
 			} catch {
 				// not valid JSON — leave as-is
 			}
-			return ["---json", hardline, fm, hardline, "---", hardline];
+			return [
+				hardline,
+				"---json",
+				hardline,
+				fm,
+				hardline,
+				"---",
+				hardline,
+			];
 		}
 
 		case TokenTypes.COMMENT:
 			return ["[#", node.value, "#]"];
 
 		case TokenTypes.TEXT:
-			if (node.value.trim() === "") {
-				return "";
-			}
+			if (node.value.trim() === "") return "";
 			return node.value.replaceAll(/\n[\t ]*(\n|$)/gm, "\n\n").trimEnd();
 
 		case TokenTypes.RAW:
 			return ["[% raw %]", node.value, "[% endraw %]"];
 
 		case TokenTypes.VALUE:
-			// TODO: Embed into XQuery here
-			return ["[[ ", node.expr, " ]]"];
+			// embed() handles XQuery formatting; this is the synchronous fallback
+			return ["[[ ", path.call(print, "expr"), " ]]"];
 
 		case TokenTypes.IMPORT: {
 			const at = node.at ? ` at "${node.at}"` : "";
@@ -57,106 +69,92 @@ export default function printNode(
 			return [`[% include ${node.target} %]`];
 
 		case TokenTypes.FOR:
+			// embed() handles XQuery formatting; this is the synchronous fallback
 			return [
 				hardline,
-				`[% for ${node.var} in ${node.expr} %]`,
-				indent([
-					join(
-						"",
-						node.body.map((n) => printNode(n, options)),
-					),
-				]),
+				"[% for ",
+				node.var,
+				" in ",
+				path.call(print, "expr"),
+				" %]",
+				indent([join("", path.map(print, "body"))]),
 				hardline,
 				"[% endfor %]",
 			];
 
 		case TokenTypes.LET:
+			// embed() handles XQuery formatting; this is the synchronous fallback
 			return [
 				hardline,
-				`[% let ${node.var} = ${node.expr} %]`,
-				indent([
-					join(
-						"",
-						node.body.map((n) => printNode(n, options)),
-					),
-				]),
+				"[% let ",
+				node.var,
+				" = ",
+				path.call(print, "expr"),
+				" %]",
+				indent([join("", path.map(print, "body"))]),
 				hardline,
 				"[% endlet %]",
 			];
 
-		case TokenTypes.IF: {
-			const parts = [
+		case TokenTypes.IF:
+			// embed() handles XQuery formatting; this is the synchronous fallback
+			return [
 				hardline,
-				`[% if ${node.expr} %]`,
-				indent([
-					join(
-						"",
-						node.consequent.map((n) => printNode(n, options)),
-					),
-				]),
-			] as Doc[];
-			for (const alt of node.alternates) {
-				if (alt.type === TokenTypes.ELIF) {
-					parts.push(hardline, `[% elif ${alt.expr} %]`);
-					parts.push(
-						indent([
-							join(
-								"",
-								alt.body.map((n) => printNode(n, options)),
-							),
-							hardline,
-						]),
-					);
-				} else if (alt.type === TokenTypes.ELSE) {
-					parts.push(hardline, "[% else %]");
-					parts.push(
-						indent([
-							join(
-								"",
-								alt.body.map((n) => printNode(n, options)),
-							),
-						]),
-					);
-				}
-			}
-			parts.push(hardline, "[% endif %]");
-			return parts;
-		}
+				"[% if ",
+				path.call(print, "expr"),
+				" %]",
+				indent([join("", path.map(print, "consequent"))]),
+				...path.map(print, "alternates"),
+				hardline,
+				"[% endif %]",
+			];
+
+		// ELIF and ELSE are Alternate nodes reached via path.map(print, "alternates") in IF
+		case TokenTypes.ELIF:
+			// embed() handles XQuery formatting; this is the synchronous fallback
+			return [
+				hardline,
+				"[% elif ",
+				path.call(print, "expr"),
+				" %]",
+				indent([join("", path.map(print, "body")), hardline]),
+			];
+
+		case TokenTypes.ELSE:
+			return [
+				hardline,
+				"[% else %]",
+				indent([join("", path.map(print, "body"))]),
+			];
 
 		case TokenTypes.BLOCK: {
 			const order = node.order ? ` ${node.order}` : "";
-			let body: Doc;
-			if (
+			const isEmpty =
 				node.body.length === 0 ||
 				(node.body.length === 1 &&
 					node.body[0]?.type === TokenTypes.TEXT &&
-					node.body[0].value.trim() === "")
-			) {
-				body = "";
-			} else {
-				body = [
-					indent([
-						join(
-							"",
-							node.body.map((n) => printNode(n, options)),
-						),
-					]),
+					node.body[0].value.trim() === "");
+			if (isEmpty) {
+				return [
 					hardline,
+					`[% block ${node.name}${order} %]`,
+					"[% endblock %]",
 				];
 			}
-			return [`[% block ${node.name}${order} %]`, body, "[% endblock %]"];
+			return [
+				hardline,
+				`[% block ${node.name}${order} %]`,
+				indent([join("", path.map(print, "body"))]),
+				hardline,
+				"[% endblock %]",
+			];
 		}
 
 		case TokenTypes.TEMPLATE: {
 			const order = node.order ? ` ${node.order}` : "";
 			return [
 				`[% template ${node.name}${order} %]`,
-				indent([
-					join(
-						"",
-						node.body.map((n) => printNode(n, options)),
-					),
-				]),
+				indent([join("", path.map(print, "body"))]),
 				hardline,
 				"[% endtemplate %]",
 			];
@@ -166,12 +164,7 @@ export default function printNode(
 			const order = node.order ? ` ${node.order}` : "";
 			return [
 				`[% template! ${node.name}${order} %]`,
-				indent([
-					join(
-						"",
-						node.body.map((n) => printNode(n, options)),
-					),
-				]),
+				indent([join("", path.map(print, "body"))]),
 				hardline,
 				"[% endtemplate %]",
 			];
