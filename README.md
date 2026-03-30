@@ -1,7 +1,7 @@
 # Prettier for Jinks
 [![NPM
 version](https://badge.fury.io/js/prettier-plugin-jinks.svg)](http://badge.fury.io/js/prettier-plugin-jinks)
-[![Tests](https://github.com/DrRataplan/prettier-plugin-jinks/actions/workflows/test.yml/badge.svg)](https://github.com/DrRataplan/prettier-plugin-jinks/actions/workflows/test.yml)
+[![Tests](https://github.com/DrRataplan/prettier-plugin-jinks/actions/workflows/test.yml/badge.svg)](https://github.com/DrRataplan/prettier-plugin-jinks/actions/workflows/ci.yml)
 [![Coverage
 Status](https://coveralls.io/repos/github/DrRataplan/prettier-plugin-jinks/badge.svg)](https://coveralls.io/github/DrRataplan/prettier-plugin-jinks)
 
