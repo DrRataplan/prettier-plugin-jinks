@@ -2,7 +2,7 @@ import { XQuery31Full } from "xq-parser";
 import type { TokenType } from "./Token.ts";
 import { TokenTypes } from "./Token.ts";
 
-function xqExpr(value: string): XQExprValue {
+function xqExpr(value: string, start: number, end: number): XQExprValue {
 	try {
 		XQuery31Full(value);
 	} catch (e) {
@@ -10,7 +10,7 @@ function xqExpr(value: string): XQExprValue {
 			`Invalid XQuery expression ${JSON.stringify(value)}: ${e instanceof Error ? e.message : String(e)}`,
 		);
 	}
-	return { type: TokenTypes.XQEXPR, value };
+	return { type: TokenTypes.XQEXPR, value, start, end };
 }
 
 // Each pattern is matched separately for clarity and correct group extraction
@@ -99,7 +99,7 @@ type SimpleToken = {
 };
 type IncludeToken = { type: TokenType.INCLUDE; target: string };
 type ElseToken = { type: TokenType.ELSE };
-type XQExprValue = { type: TokenType.XQEXPR; value: string };
+type XQExprValue = { type: TokenType.XQEXPR; value: string; start: number; end: number };
 type IfToken = { type: TokenType.IF | TokenType.ELIF; expr: XQExprValue };
 type LetToken = { type: TokenType.LET; var: string; expr: XQExprValue };
 type ForToken = { type: TokenType.FOR; var: string; expr: XQExprValue };
@@ -115,7 +115,7 @@ type TemplateToken = {
 	order: string;
 };
 type ValueToken = { type: TokenType.VALUE; expr: XQExprValue };
-export type Token =
+export type Token = (
 	| SimpleToken
 	| ImportToken
 	| TemplateToken
@@ -124,11 +124,13 @@ export type Token =
 	| LetToken
 	| IncludeToken
 	| IfToken
-	| ForToken;
+	| ForToken
+) & { start: number; end: number };
 
 export default function tokenize(input: string): Token[] {
 	const tokens: Token[] = [];
 	let remaining = input;
+	let offset = 0;
 
 	while (remaining.length > 0) {
 		let earliest: number | null = null;
@@ -147,7 +149,7 @@ export default function tokenize(input: string): Token[] {
 
 		if (earliest === null) {
 			// No more template tokens — rest is plain text
-			tokens.push({ type: TokenTypes.TEXT, value: remaining });
+			tokens.push({ type: TokenTypes.TEXT, value: remaining, start: offset, end: offset + remaining.length });
 			break;
 		}
 
@@ -156,11 +158,15 @@ export default function tokenize(input: string): Token[] {
 			tokens.push({
 				type: TokenTypes.TEXT,
 				value: remaining.slice(0, earliest),
+				start: offset,
+				end: offset + earliest,
 			});
 		}
 
 		const m = earliestMatch!;
 		const p = earliestPattern!;
+		const tokStart = offset + earliest;
+		const tokEnd = tokStart + m[0].length;
 
 		switch (p.type) {
 			case TokenTypes.ENDFOR:
@@ -239,6 +245,7 @@ export default function tokenize(input: string): Token[] {
 				break;
 		}
 
+		offset += earliest + m[0].length;
 		remaining = remaining.slice(earliest + m[0].length);
 	}
 

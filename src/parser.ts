@@ -5,9 +5,11 @@ import type { Token } from "./tokenize.ts";
 export type XQExprNode = {
 	type: TokenType.XQEXPR;
 	value: string;
+	start: number;
+	end: number;
 };
 
-export type Node =
+export type Node = (
 	| BlockNode
 	| ElseNode
 	| ElifNode
@@ -19,7 +21,8 @@ export type Node =
 	| SimpleNode
 	| TemplateNode
 	| ValueNode
-	| XQExprNode;
+	| XQExprNode
+) & { start: number; end: number };
 
 type SimpleNode = {
 	type:
@@ -56,6 +59,8 @@ type ImportNode = {
 export type RootNode = {
 	type: "root";
 	body: Node[];
+	start: number;
+	end: number;
 };
 
 type ValueNode = {
@@ -132,23 +137,23 @@ export default function parse(tokens: Token[]): RootNode {
 		switch (t.type) {
 			case TokenTypes.FRONTMATTER: {
 				consume();
-				return { type: TokenTypes.FRONTMATTER, value: t.value };
+				return { type: TokenTypes.FRONTMATTER, value: t.value, start: t.start, end: t.end };
 			}
 			case TokenTypes.COMMENT: {
 				consume();
-				return { type: TokenTypes.COMMENT, value: t.value };
+				return { type: TokenTypes.COMMENT, value: t.value, start: t.start, end: t.end };
 			}
 			case TokenTypes.TEXT: {
 				consume();
-				return { type: TokenTypes.TEXT, value: t.value };
+				return { type: TokenTypes.TEXT, value: t.value, start: t.start, end: t.end };
 			}
 			case TokenTypes.RAW: {
 				consume();
-				return { type: TokenTypes.RAW, value: t.value };
+				return { type: TokenTypes.RAW, value: t.value, start: t.start, end: t.end };
 			}
 			case TokenTypes.VALUE: {
 				consume();
-				return { type: TokenTypes.VALUE, expr: t.expr };
+				return { type: TokenTypes.VALUE, expr: t.expr, start: t.start, end: t.end };
 			}
 			case TokenTypes.IMPORT: {
 				consume();
@@ -157,25 +162,27 @@ export default function parse(tokens: Token[]): RootNode {
 					uri: t.uri,
 					as: t.as,
 					at: t.at,
+					start: t.start,
+					end: t.end,
 				};
 			}
 			case TokenTypes.INCLUDE: {
 				consume();
-				return { type: TokenTypes.INCLUDE, target: t.target };
+				return { type: TokenTypes.INCLUDE, target: t.target, start: t.start, end: t.end };
 			}
 			case TokenTypes.FOR: {
 				consume();
 				const body = parseBody([TokenTypes.ENDFOR]);
 				if (eof()) throw new SyntaxError("[% for %] without [% endfor %]");
-				consume();
-				return { type: TokenTypes.FOR, var: t.var, expr: t.expr, body };
+				const endFor = consume()!;
+				return { type: TokenTypes.FOR, var: t.var, expr: t.expr, body, start: t.start, end: endFor.end };
 			}
 			case TokenTypes.LET: {
 				consume();
 				const body = parseBody([TokenTypes.ENDLET]);
 				if (eof()) throw new SyntaxError("[% let %] without [% endlet %]");
-				consume();
-				return { type: TokenTypes.LET, var: t.var, expr: t.expr, body };
+				const endLet = consume()!;
+				return { type: TokenTypes.LET, var: t.var, expr: t.expr, body, start: t.start, end: endLet.end };
 			}
 			case TokenTypes.IF: {
 				consume();
@@ -198,6 +205,8 @@ export default function parse(tokens: Token[]): RootNode {
 							type: TokenTypes.ELIF,
 							expr: next.expr,
 							body: elifBody,
+							start: next.start,
+							end: elifBody.length > 0 ? elifBody[elifBody.length - 1]!.end : next.end,
 						});
 					} else if (next.type === TokenTypes.ELSE) {
 						consume();
@@ -205,6 +214,8 @@ export default function parse(tokens: Token[]): RootNode {
 						alternates.push({
 							type: TokenTypes.ELSE,
 							body: elseBody,
+							start: next.start,
+							end: elseBody.length > 0 ? elseBody[elseBody.length - 1]!.end : next.end,
 						});
 						break;
 					} else if (next.type === TokenTypes.ENDIF) {
@@ -215,24 +226,28 @@ export default function parse(tokens: Token[]): RootNode {
 				}
 				if (eof() || peek().type !== TokenTypes.ENDIF)
 					throw new SyntaxError("[% if %] without [% endif %]");
-				consume();
+				const endIf = consume()!;
 				return {
 					type: TokenTypes.IF,
 					expr: t.expr,
 					consequent,
 					alternates,
+					start: t.start,
+					end: endIf.end,
 				};
 			}
 			case TokenTypes.BLOCK: {
 				consume();
 				const body = parseBody([TokenTypes.ENDBLOCK]);
 				if (eof()) throw new SyntaxError("[% block %] without [% endblock %]");
-				consume();
+				const endBlock = consume()!;
 				return {
 					type: TokenTypes.BLOCK,
 					name: t.name,
 					order: t.order,
 					body,
+					start: t.start,
+					end: endBlock.end,
 				};
 			}
 			case TokenTypes.TEMPLATE_OVERRIDE:
@@ -240,12 +255,14 @@ export default function parse(tokens: Token[]): RootNode {
 				consume();
 				const body = parseBody([TokenTypes.ENDTEMPLATE]);
 				if (eof()) throw new SyntaxError("[% template %] without [% endtemplate %]");
-				consume();
+				const endTemplate = consume()!;
 				return {
 					type: t.type,
 					name: t.name,
 					order: t.order,
 					body,
+					start: t.start,
+					end: endTemplate.end,
 				};
 			}
 			case TokenTypes.ENDFOR:
@@ -265,11 +282,13 @@ export default function parse(tokens: Token[]): RootNode {
 			default: {
 				// Unknown token — treat as text
 				consume();
-				return { type: TokenTypes.TEXT, value: JSON.stringify(t) };
+				return { type: TokenTypes.TEXT, value: JSON.stringify(t), start: t.start, end: t.end };
 			}
 		}
 	}
 
 	const body = parseBody(null);
-	return { type: "root", body };
+	const start = body.length > 0 ? body[0]!.start : 0;
+	const end = body.length > 0 ? body[body.length - 1]!.end : 0;
+	return { type: "root", body, start, end };
 }

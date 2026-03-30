@@ -140,40 +140,62 @@ const printer: Printer = {
 						} else {
 							switch (n.type) {
 								case TokenTypes.VALUE:
-									out += (lang!.wrapValue ?? lang!.wrap)(`JINKS_SPECIAL_${counter++}`);
+									out += (lang!.wrapValue ?? lang!.wrap)(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									break;
 								case TokenTypes.COMMENT:
 								case TokenTypes.RAW:
 								case TokenTypes.FRONTMATTER:
 								case TokenTypes.INCLUDE:
 								case TokenTypes.IMPORT:
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									break;
 								case TokenTypes.FOR:
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									out += buildSource(n.body);
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									break;
 								case TokenTypes.LET:
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									out += buildSource(n.body);
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									break;
 								case TokenTypes.IF:
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									out += buildSource(n.consequent);
 									for (const alt of n.alternates) {
-										out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+										out += lang!.wrap(
+											`JINKS_SPECIAL_${counter++}`,
+										);
 										out += buildSource(alt.body);
 									}
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									break;
 								case TokenTypes.BLOCK:
 								case TokenTypes.TEMPLATE:
 								case TokenTypes.TEMPLATE_OVERRIDE:
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									out += buildSource(n.body);
-									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
+									out += lang!.wrap(
+										`JINKS_SPECIAL_${counter++}`,
+									);
 									break;
 							}
 						}
@@ -236,7 +258,7 @@ const printer: Printer = {
 	},
 };
 
-const plugin: prettier.Plugin = {
+const plugin: prettier.Plugin<Node | RootNode> = {
 	languages: [
 		{
 			name: "Jinks Template",
@@ -253,7 +275,7 @@ const plugin: prettier.Plugin = {
 				return parse(tokens);
 			},
 			astFormat: "jinks-templating",
-			locStart() {
+			locStart(node) {
 				// TODO
 				return 0;
 			},
