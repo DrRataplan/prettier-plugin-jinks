@@ -22,6 +22,7 @@
 		"semantic-release": "^25.0.3"
 	},
 	"scripts": {
+		"coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**/*.ts' --test-reporter=lcov --test-reporter-destination='lcov.info' --test-reporter=dot --test-reporter-destination=stdout ./test/**/*.ts",
 		"test": "node --test **/*.test.ts",
 		"build": "tsc",
 		"lint": "prettier --write ./**/*.ts",
