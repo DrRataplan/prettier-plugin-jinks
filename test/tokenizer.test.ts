@@ -129,4 +129,41 @@ describe("Tokenize", () => {
 		assert.equal(values[1].expr.type, "XQEXPR");
 		assert.equal(values[1].expr.value, "$b");
 	});
+
+	describe("XQuery syntax errors", () => {
+		function tokenizeErr(input: string): string {
+			try {
+				tokenize(input);
+				throw new Error("expected SyntaxError");
+			} catch (e) {
+				assert.ok(e instanceof SyntaxError, `expected SyntaxError, got ${e}`);
+				return e.message;
+			}
+		}
+
+		it("invalid XQuery in value interpolation", () => {
+			assert.match(tokenizeErr("[[ @@@ ]]"), /Invalid XQuery/);
+		});
+		it("invalid XQuery in if condition", () => {
+			assert.match(tokenizeErr("[% if @@invalid %]body[% endif %]"), /Invalid XQuery/);
+		});
+		it("invalid XQuery in elif condition", () => {
+			assert.match(
+				tokenizeErr("[% if $a %]a[% elif @@bad %]b[% endif %]"),
+				/Invalid XQuery/,
+			);
+		});
+		it("invalid XQuery in for expression", () => {
+			assert.match(
+				tokenizeErr("[% for $x in @@bad %]body[% endfor %]"),
+				/Invalid XQuery/,
+			);
+		});
+		it("invalid XQuery in let expression", () => {
+			assert.match(
+				tokenizeErr("[% let $x = @@bad %]body[% endlet %]"),
+				/Invalid XQuery/,
+			);
+		});
+	});
 });

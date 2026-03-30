@@ -1,5 +1,17 @@
+import { XQuery31Full } from "xq-parser";
 import type { TokenType } from "./Token.ts";
 import { TokenTypes } from "./Token.ts";
+
+function xqExpr(value: string): XQExprValue {
+	try {
+		XQuery31Full(value);
+	} catch (e) {
+		throw new SyntaxError(
+			`Invalid XQuery expression ${JSON.stringify(value)}: ${e instanceof Error ? e.message : String(e)}`,
+		);
+	}
+	return { type: TokenTypes.XQEXPR, value };
+}
 
 // Each pattern is matched separately for clarity and correct group extraction
 type Pattern = {
@@ -174,14 +186,14 @@ export default function tokenize(input: string): Token[] {
 				tokens.push({
 					type: TokenTypes.FOR,
 					var: m[1]!.trim(),
-					expr: { type: TokenTypes.XQEXPR, value: m[2]!.trim() },
+					expr: xqExpr(m[2]!.trim()),
 				});
 				break;
 			case TokenTypes.LET:
 				tokens.push({
 					type: TokenTypes.LET,
 					var: m[1]!.trim(),
-					expr: { type: TokenTypes.XQEXPR, value: m[2]!.trim() },
+					expr: xqExpr(m[2]!.trim()),
 				});
 				break;
 			case TokenTypes.INCLUDE:
@@ -207,13 +219,13 @@ export default function tokenize(input: string): Token[] {
 			case "IF":
 				tokens.push({
 					type: TokenTypes.IF,
-					expr: { type: TokenTypes.XQEXPR, value: m[1]!.trim() },
+					expr: xqExpr(m[1]!.trim()),
 				});
 				break;
 			case "ELIF":
 				tokens.push({
 					type: TokenTypes.ELIF,
-					expr: { type: TokenTypes.XQEXPR, value: m[1]!.trim() },
+					expr: xqExpr(m[1]!.trim()),
 				});
 				break;
 			case TokenTypes.ELSE:
@@ -222,7 +234,7 @@ export default function tokenize(input: string): Token[] {
 			case TokenTypes.VALUE:
 				tokens.push({
 					type: TokenTypes.VALUE,
-					expr: { type: TokenTypes.XQEXPR, value: m[1]!.trim() },
+					expr: xqExpr(m[1]!.trim()),
 				});
 				break;
 		}
