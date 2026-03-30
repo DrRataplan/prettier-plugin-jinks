@@ -33,6 +33,8 @@ import printNode from "./printNode.ts";
 type LangConfig = {
 	parser: string;
 	wrap: (id: string) => string;
+	// For VALUE tokens in expression position (e.g. XQuery). Defaults to wrap.
+	wrapValue?: (id: string) => string;
 	re: RegExp;
 };
 
@@ -42,17 +44,20 @@ const LANG_MAP: Record<string, LangConfig> = {
 	xq: {
 		parser: "xquery",
 		wrap: (id) => `(:${id}:)`,
-		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)/g,
+		wrapValue: (id) => `$${id}`,
+		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)|\$(JINKS_SPECIAL_\d+)/g,
 	},
 	xql: {
 		parser: "xquery",
 		wrap: (id) => `(:${id}:)`,
-		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)/g,
+		wrapValue: (id) => `$${id}`,
+		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)|\$(JINKS_SPECIAL_\d+)/g,
 	},
 	xqm: {
 		parser: "xquery",
 		wrap: (id) => `(:${id}:)`,
-		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)/g,
+		wrapValue: (id) => `$${id}`,
+		re: /\(:\s*(JINKS_SPECIAL_\d+)\s*:\)|\$(JINKS_SPECIAL_\d+)/g,
 	},
 	html: {
 		parser: "html",
@@ -111,7 +116,7 @@ const printer: Printer = {
 				return null;
 			}
 
-			return async (_textToDoc, print, path, options) => {
+			return async (_textToDoc, _print, path, options) => {
 				const root = path.node as RootNode;
 
 				// Phase 1: build placeholder source from AST
@@ -126,10 +131,6 @@ const printer: Printer = {
 				}> = [];
 				let counter = 0;
 
-				function ph(): string {
-					return lang!.wrap(`JINKS_SPECIAL_${counter++}`);
-				}
-
 				function buildSource(nodes: Node[]): string {
 					let out = "";
 					for (const n of nodes) {
@@ -139,38 +140,40 @@ const printer: Printer = {
 						} else {
 							switch (n.type) {
 								case TokenTypes.VALUE:
+									out += (lang!.wrapValue ?? lang!.wrap)(`JINKS_SPECIAL_${counter++}`);
+									break;
 								case TokenTypes.COMMENT:
 								case TokenTypes.RAW:
 								case TokenTypes.FRONTMATTER:
 								case TokenTypes.INCLUDE:
 								case TokenTypes.IMPORT:
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									break;
 								case TokenTypes.FOR:
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									out += buildSource(n.body);
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									break;
 								case TokenTypes.LET:
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									out += buildSource(n.body);
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									break;
 								case TokenTypes.IF:
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									out += buildSource(n.consequent);
 									for (const alt of n.alternates) {
-										out += ph();
+										out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 										out += buildSource(alt.body);
 									}
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									break;
 								case TokenTypes.BLOCK:
 								case TokenTypes.TEMPLATE:
 								case TokenTypes.TEMPLATE_OVERRIDE:
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									out += buildSource(n.body);
-									out += ph();
+									out += lang!.wrap(`JINKS_SPECIAL_${counter++}`);
 									break;
 							}
 						}
@@ -192,12 +195,19 @@ const printer: Printer = {
 
 				// Phase 3: assign formatted text segments back to TEXT nodes
 
-				// split(re) with a capturing group gives [text, id, text, id, ..., text].
-				// The TEXT node with segIdx k owns parts[k * 2].
-				// Collapse extra blank lines that some host formatters insert around
-				// comment placeholders.
+				// Use matchAll so multi-group regexes (xquery) work: take the first
+				// non-undefined capture as the ID. Collapse extra blank lines that
+				// host formatters insert around comment placeholders.
+				lang.re.lastIndex = 0;
+				const parts: string[] = [];
+				let lastIndex = 0;
+				for (const match of formatted.matchAll(lang.re)) {
+					parts.push(formatted.slice(lastIndex, match.index));
+					parts.push((match[1] ?? match[2]) as string);
+					lastIndex = match.index! + match[0].length;
+				}
+				parts.push(formatted.slice(lastIndex));
 
-				const parts = formatted.split(lang.re);
 				for (const { node: textNode, segIdx } of textEntries) {
 					let text = parts[segIdx * 2] ?? "";
 					if (segIdx > 0) {
@@ -206,13 +216,7 @@ const printer: Printer = {
 					textNode.value = text;
 				}
 
-				// Phase 4: print AST with updated TEXT values
-
-				// printNode handles Jinks tag formatting; XQEXPR embed handles XQ
-				// expression formatting (no separate pre-format phase needed).
-
-				const { join } = prettier.doc.builders;
-				return join("", path.map(print, "body"));
+				// print() handles output via printNode — no return value here.
 			};
 		}
 
@@ -221,15 +225,10 @@ const printer: Printer = {
 		if (node.type === TokenTypes.XQEXPR) {
 			return async (textToDoc, _print, path, options) => {
 				const n = path.node as XQExprNode;
-				try {
-					return await textToDoc(n.value.trim(), {
-						...options,
-						parser: "xquery",
-					});
-				} catch (e) {
-					// Oops! XQuery error! rethrow.
-					throw e;
-				}
+				return await textToDoc(n.value.trim(), {
+					...options,
+					parser: "xquery",
+				});
 			};
 		}
 

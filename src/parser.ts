@@ -166,13 +166,15 @@ export default function parse(tokens: Token[]): RootNode {
 			case TokenTypes.FOR: {
 				consume();
 				const body = parseBody([TokenTypes.ENDFOR]);
-				if (!eof()) consume(); // consume endfor
+				if (eof()) throw new SyntaxError("[% for %] without [% endfor %]");
+				consume();
 				return { type: TokenTypes.FOR, var: t.var, expr: t.expr, body };
 			}
 			case TokenTypes.LET: {
 				consume();
 				const body = parseBody([TokenTypes.ENDLET]);
-				if (!eof()) consume(); // consume endlet
+				if (eof()) throw new SyntaxError("[% let %] without [% endlet %]");
+				consume();
 				return { type: TokenTypes.LET, var: t.var, expr: t.expr, body };
 			}
 			case TokenTypes.IF: {
@@ -211,7 +213,9 @@ export default function parse(tokens: Token[]): RootNode {
 						break;
 					}
 				}
-				if (!eof() && peek().type === TokenTypes.ENDIF) consume();
+				if (eof() || peek().type !== TokenTypes.ENDIF)
+					throw new SyntaxError("[% if %] without [% endif %]");
+				consume();
 				return {
 					type: TokenTypes.IF,
 					expr: t.expr,
@@ -222,7 +226,8 @@ export default function parse(tokens: Token[]): RootNode {
 			case TokenTypes.BLOCK: {
 				consume();
 				const body = parseBody([TokenTypes.ENDBLOCK]);
-				if (!eof()) consume();
+				if (eof()) throw new SyntaxError("[% block %] without [% endblock %]");
+				consume();
 				return {
 					type: TokenTypes.BLOCK,
 					name: t.name,
@@ -234,7 +239,8 @@ export default function parse(tokens: Token[]): RootNode {
 			case TokenTypes.TEMPLATE: {
 				consume();
 				const body = parseBody([TokenTypes.ENDTEMPLATE]);
-				if (!eof()) consume();
+				if (eof()) throw new SyntaxError("[% template %] without [% endtemplate %]");
+				consume();
 				return {
 					type: t.type,
 					name: t.name,
@@ -242,6 +248,20 @@ export default function parse(tokens: Token[]): RootNode {
 					body,
 				};
 			}
+			case TokenTypes.ENDFOR:
+				throw new SyntaxError("[% endfor %] without [% for %]");
+			case TokenTypes.ENDLET:
+				throw new SyntaxError("[% endlet %] without [% let %]");
+			case TokenTypes.ENDIF:
+				throw new SyntaxError("[% endif %] without [% if %]");
+			case TokenTypes.ENDBLOCK:
+				throw new SyntaxError("[% endblock %] without [% block %]");
+			case TokenTypes.ENDTEMPLATE:
+				throw new SyntaxError("[% endtemplate %] without [% template %]");
+			case TokenTypes.ELIF:
+				throw new SyntaxError("[% elif %] without [% if %]");
+			case TokenTypes.ELSE:
+				throw new SyntaxError("[% else %] without [% if %]");
 			default: {
 				// Unknown token — treat as text
 				consume();

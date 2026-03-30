@@ -128,4 +128,53 @@ describe("parser", () => {
 		assertType(ast.body[0].type, TokenTypes.RAW);
 		assert.equal(ast.body[0].value, "[[ escaped ]]");
 	});
+
+	describe("syntax errors", () => {
+		function parseErr(input: string): string {
+			try {
+				parse(tokenize(input));
+				throw new Error("expected SyntaxError");
+			} catch (e) {
+				assert.ok(e instanceof SyntaxError, `expected SyntaxError, got ${e}`);
+				return e.message;
+			}
+		}
+
+		it("missing endfor", () => {
+			assert.match(parseErr("[% for $x in $xs %]body"), /endfor/);
+		});
+		it("missing endlet", () => {
+			assert.match(parseErr("[% let $x = expr %]body"), /endlet/);
+		});
+		it("missing endif", () => {
+			assert.match(parseErr("[% if $x %]body"), /endif/);
+		});
+		it("missing endblock", () => {
+			assert.match(parseErr("[% block foo %]body"), /endblock/);
+		});
+		it("missing endtemplate", () => {
+			assert.match(parseErr("[% template foo %]body"), /endtemplate/);
+		});
+		it("orphaned endfor", () => {
+			assert.match(parseErr("[% endfor %]"), /for/);
+		});
+		it("orphaned endlet", () => {
+			assert.match(parseErr("[% endlet %]"), /let/);
+		});
+		it("orphaned endif", () => {
+			assert.match(parseErr("[% endif %]"), /if/);
+		});
+		it("orphaned endblock", () => {
+			assert.match(parseErr("[% endblock %]"), /block/);
+		});
+		it("orphaned endtemplate", () => {
+			assert.match(parseErr("[% endtemplate %]"), /template/);
+		});
+		it("orphaned elif", () => {
+			assert.match(parseErr("[% elif $x %]"), /if/);
+		});
+		it("orphaned else", () => {
+			assert.match(parseErr("[% else %]"), /if/);
+		});
+	});
 });
