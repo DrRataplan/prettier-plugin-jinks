@@ -9,7 +9,7 @@ export type XQExprNode = {
 	end: number;
 };
 
-export type Node = (
+export type Node =
 	| BlockNode
 	| ElseNode
 	| ElifNode
@@ -21,8 +21,7 @@ export type Node = (
 	| SimpleNode
 	| TemplateNode
 	| ValueNode
-	| XQExprNode
-) & { start: number; end: number };
+	| XQExprNode;
 
 type SimpleNode = {
 	type:
@@ -36,17 +35,23 @@ type SimpleNode = {
 		| TokenType.RAW
 		| TokenType.TEXT;
 	value: string;
+	start: number;
+	end: number;
 };
 
 type ElifNode = {
 	type: TokenType.ELIF;
 	expr: XQExprNode;
 	body: Node[];
+	start: number;
+	end: number;
 };
 
 type ElseNode = {
 	type: TokenType.ELSE;
 	body: Node[];
+	start: number;
+	end: number;
 };
 
 type ImportNode = {
@@ -54,6 +59,8 @@ type ImportNode = {
 	at: string | null;
 	uri: string;
 	as: string;
+	start: number;
+	end: number;
 };
 
 export type RootNode = {
@@ -66,11 +73,15 @@ export type RootNode = {
 type ValueNode = {
 	type: TokenType.VALUE;
 	expr: XQExprNode;
+	start: number;
+	end: number;
 };
 
 type IncludeNode = {
 	type: TokenType.INCLUDE;
 	target: string;
+	start: number;
+	end: number;
 };
 
 type ForNode = {
@@ -78,6 +89,8 @@ type ForNode = {
 	var: string;
 	expr: XQExprNode;
 	body: Node[];
+	start: number;
+	end: number;
 };
 
 type LetNode = {
@@ -85,6 +98,8 @@ type LetNode = {
 	var: string;
 	expr: XQExprNode;
 	body: Node[];
+	start: number;
+	end: number;
 };
 
 type IfNode = {
@@ -92,6 +107,8 @@ type IfNode = {
 	expr: XQExprNode;
 	consequent: Node[];
 	alternates: Alternate[];
+	start: number;
+	end: number;
 };
 
 type Alternate = ElifNode | ElseNode;
@@ -101,12 +118,16 @@ type BlockNode = {
 	name: string;
 	order: string | null;
 	body: Node[];
+	start: number;
+	end: number;
 };
 type TemplateNode = {
 	type: TokenType.TEMPLATE | TokenType.TEMPLATE_OVERRIDE;
 	name: string;
 	order: string | null;
 	body: Node[];
+	start: number;
+	end: number;
 };
 export default function parse(tokens: Token[]): RootNode {
 	let pos = 0;
@@ -337,16 +358,6 @@ export default function parse(tokens: Token[]): RootNode {
 				throw new SyntaxError("[% elif %] without [% if %]");
 			case TokenTypes.ELSE:
 				throw new SyntaxError("[% else %] without [% if %]");
-			default: {
-				// Unknown token — treat as text
-				consume();
-				return {
-					type: TokenTypes.TEXT,
-					value: JSON.stringify(t),
-					start: t.start,
-					end: t.end,
-				};
-			}
 		}
 	}
 

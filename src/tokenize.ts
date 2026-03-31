@@ -188,7 +188,12 @@ export default function tokenize(input: string): Token[] {
 			case TokenTypes.ENDTEMPLATE:
 			case TokenTypes.ENDLET:
 			case TokenTypes.COMMENT:
-				tokens.push({ type: p.type, value: m[1]! });
+				tokens.push({
+					type: p.type,
+					value: m[1]!,
+					start: tokStart,
+					end: tokEnd,
+				});
 				break;
 			case TokenTypes.TEMPLATE:
 			case TokenTypes.TEMPLATE_OVERRIDE:
@@ -196,24 +201,35 @@ export default function tokenize(input: string): Token[] {
 					type: p.type,
 					name: m[1]!.trim(),
 					order: m[2]!?.trim() || "",
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 			case TokenTypes.FOR:
 				tokens.push({
 					type: TokenTypes.FOR,
 					var: m[1]!.trim(),
-					expr: xqExpr(m[2]!.trim()),
+					expr: xqExpr(m[2]!.trim(), tokStart, tokEnd),
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 			case TokenTypes.LET:
 				tokens.push({
 					type: TokenTypes.LET,
 					var: m[1]!.trim(),
-					expr: xqExpr(m[2]!.trim()),
+					expr: xqExpr(m[2]!.trim(), tokStart, tokEnd),
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 			case TokenTypes.INCLUDE:
-				tokens.push({ type: TokenTypes.INCLUDE, target: m[1]!.trim() });
+				tokens.push({
+					type: TokenTypes.INCLUDE,
+					target: m[1]!.trim(),
+					start: tokStart,
+					end: tokEnd,
+				});
 				break;
 
 			case TokenTypes.BLOCK:
@@ -221,6 +237,8 @@ export default function tokenize(input: string): Token[] {
 					type: TokenTypes.BLOCK,
 					name: m[1]!.trim(),
 					order: m[2]!?.trim() || "",
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 
@@ -230,27 +248,39 @@ export default function tokenize(input: string): Token[] {
 					uri: m[1]!.trim(),
 					as: m[2]!.trim(),
 					at: m[3]?.trim() || "",
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 			case "IF":
 				tokens.push({
 					type: TokenTypes.IF,
-					expr: xqExpr(m[1]!.trim()),
+					expr: xqExpr(m[1]!.trim(), tokStart, tokEnd),
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 			case "ELIF":
 				tokens.push({
 					type: TokenTypes.ELIF,
-					expr: xqExpr(m[1]!.trim()),
+					expr: xqExpr(m[1]!.trim(), tokStart, tokEnd),
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 			case TokenTypes.ELSE:
-				tokens.push({ type: TokenTypes.ELSE });
+				tokens.push({
+					type: TokenTypes.ELSE,
+					start: tokStart,
+					end: tokEnd,
+				});
 				break;
 			case TokenTypes.VALUE:
 				tokens.push({
 					type: TokenTypes.VALUE,
-					expr: xqExpr(m[1]!.trim()),
+					expr: xqExpr(m[1]!.trim(), tokStart, tokEnd),
+					start: tokStart,
+					end: tokEnd,
 				});
 				break;
 		}
