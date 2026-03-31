@@ -99,7 +99,12 @@ type SimpleToken = {
 };
 type IncludeToken = { type: TokenType.INCLUDE; target: string };
 type ElseToken = { type: TokenType.ELSE };
-type XQExprValue = { type: TokenType.XQEXPR; value: string; start: number; end: number };
+type XQExprValue = {
+	type: TokenType.XQEXPR;
+	value: string;
+	start: number;
+	end: number;
+};
 type IfToken = { type: TokenType.IF | TokenType.ELIF; expr: XQExprValue };
 type LetToken = { type: TokenType.LET; var: string; expr: XQExprValue };
 type ForToken = { type: TokenType.FOR; var: string; expr: XQExprValue };
@@ -149,7 +154,12 @@ export default function tokenize(input: string): Token[] {
 
 		if (earliest === null) {
 			// No more template tokens — rest is plain text
-			tokens.push({ type: TokenTypes.TEXT, value: remaining, start: offset, end: offset + remaining.length });
+			tokens.push({
+				type: TokenTypes.TEXT,
+				value: remaining,
+				start: offset,
+				end: offset + remaining.length,
+			});
 			break;
 		}
 

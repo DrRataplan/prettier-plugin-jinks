@@ -129,7 +129,10 @@ describe("parser", () => {
 				parse(tokenize(input));
 				throw new Error("expected SyntaxError");
 			} catch (e) {
-				assert.ok(e instanceof SyntaxError, `expected SyntaxError, got ${e}`);
+				assert.ok(
+					e instanceof SyntaxError,
+					`expected SyntaxError, got ${e}`,
+				);
 				return e.message;
 			}
 		}

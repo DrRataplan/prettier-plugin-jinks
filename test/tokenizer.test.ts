@@ -136,7 +136,10 @@ describe("Tokenize", () => {
 				tokenize(input);
 				throw new Error("expected SyntaxError");
 			} catch (e) {
-				assert.ok(e instanceof SyntaxError, `expected SyntaxError, got ${e}`);
+				assert.ok(
+					e instanceof SyntaxError,
+					`expected SyntaxError, got ${e}`,
+				);
 				return e.message;
 			}
 		}
@@ -145,7 +148,10 @@ describe("Tokenize", () => {
 			assert.match(tokenizeErr("[[ @@@ ]]"), /Invalid XQuery/);
 		});
 		it("invalid XQuery in if condition", () => {
-			assert.match(tokenizeErr("[% if @@invalid %]body[% endif %]"), /Invalid XQuery/);
+			assert.match(
+				tokenizeErr("[% if @@invalid %]body[% endif %]"),
+				/Invalid XQuery/,
+			);
 		});
 		it("invalid XQuery in elif condition", () => {
 			assert.match(
